@@ -11,6 +11,7 @@ import {
 	deleteGoal,
 } from "../firebase/firebaseServices";
 import { useAuthContext } from "../context/AuthContext";
+import { Target, Plus, Trophy, Zap, CheckCircle2 } from "lucide-react";
 
 const Goals = () => {
 	const { user } = useAuthContext();
@@ -29,7 +30,7 @@ const Goals = () => {
 			setGoals(data);
 		} catch (err) {
 			console.error("Error fetching goals:", err);
-			setError("Failed to load goals. Please try again.");
+			setError("Failed to load goals.");
 		} finally {
 			setLoading(false);
 		}
@@ -49,10 +50,9 @@ const Goals = () => {
 			await addGoal(user.uid, goalData);
 			await fetchGoals();
 			setShowForm(false);
-			showSuccess("Goal created successfully! 🎯");
+			showSuccess("Goal created successfully!");
 		} catch (err) {
-			console.error("Error adding goal:", err);
-			setError("Failed to create goal. Please try again.");
+			setError("Failed to create goal.", err);
 		}
 	};
 
@@ -62,10 +62,9 @@ const Goals = () => {
 			await fetchGoals();
 			setEditingGoal(null);
 			setShowForm(false);
-			showSuccess("Goal updated successfully! ✨");
+			showSuccess("Goal updated successfully!");
 		} catch (err) {
-			console.error("Error updating goal:", err);
-			setError("Failed to update goal. Please try again.");
+			setError("Failed to update goal.", err);
 		}
 	};
 
@@ -73,10 +72,9 @@ const Goals = () => {
 		try {
 			await updateGoalProgress(goalId, newValue);
 			await fetchGoals();
-			showSuccess("Progress updated! Keep going! 💪");
+			showSuccess("Progress updated!");
 		} catch (err) {
-			console.error("Error updating progress:", err);
-			setError("Failed to update progress. Please try again.");
+			setError("Failed to update progress.", err);
 		}
 	};
 
@@ -84,27 +82,20 @@ const Goals = () => {
 		try {
 			await updateGoal(goalId, { status: newStatus });
 			await fetchGoals();
-			const messages = {
-				completed: "Congratulations! Goal completed! 🎉",
-				paused: "Goal paused. Resume whenever you're ready!",
-				active: "Goal resumed! Let's do this! 💪",
-			};
-			showSuccess(messages[newStatus] || "Status updated!");
+			showSuccess(`Goal marked as ${newStatus}`);
 		} catch (err) {
-			console.error("Error changing status:", err);
-			setError("Failed to update status. Please try again.");
+			setError("Failed to update status.", err);
 		}
 	};
 
 	const handleDeleteGoal = async (goalId) => {
-		if (!window.confirm("Are you sure you want to delete this goal?")) return;
+		if (!window.confirm("Delete this goal?")) return;
 		try {
 			await deleteGoal(goalId);
 			await fetchGoals();
 			showSuccess("Goal deleted.");
 		} catch (err) {
-			console.error("Error deleting goal:", err);
-			setError("Failed to delete goal. Please try again.");
+			setError("Failed to delete goal.", err);
 		}
 	};
 
@@ -113,81 +104,147 @@ const Goals = () => {
 		setShowForm(true);
 	};
 
-	const handleCancel = () => {
-		setShowForm(false);
-		setEditingGoal(null);
+	// Stats Calculation
+	const stats = {
+		total: goals.length,
+		active: goals.filter((g) => g.status === "active").length,
+		completed: goals.filter((g) => g.status === "completed").length,
+		highPriority: goals.filter(
+			(g) => g.status === "active" && g.priority === "high",
+		).length,
 	};
 
 	return (
-		<div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 to-gray-100">
+		<div className="min-h-screen bg-slate-50 font-sans text-slate-900">
 			<Navbar />
 
-			<main className="flex-grow p-4 md:p-6 max-w-7xl mx-auto w-full">
-				{/* Header */}
-				<div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+			<main className="max-w-7xl mx-auto p-4 md:p-6 lg:p-8">
+				{/* Header Section */}
+				<div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8 animate-fade-in-up">
 					<div>
-						<h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3">
-							🎯 My Goals
+						<h1 className="text-3xl font-extrabold text-slate-900 flex items-center gap-3">
+							<span className="p-2 bg-blue-100 text-blue-600 rounded-xl">
+								<Target size={28} />
+							</span>
+							Goals & Milestones
 						</h1>
-						<p className="text-gray-500 mt-1">
-							Track your fitness journey with measurable goals
+						<p className="text-slate-500 mt-2 text-lg">
+							Set targets and crush them one by one.
 						</p>
 					</div>
 
 					{!showForm && (
 						<button
 							onClick={() => setShowForm(true)}
-							className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-medium hover:from-blue-600 hover:to-blue-700 transition-all shadow-lg hover:shadow-xl"
+							className="group flex items-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-xl font-semibold hover:bg-slate-800 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300"
 						>
-							<span className="text-xl">+</span>
+							<Plus
+								size={20}
+								className="group-hover:rotate-90 transition-transform duration-300"
+							/>
 							Create New Goal
 						</button>
 					)}
 				</div>
 
-				{/* Success Message */}
+				{/* Stats Grid (Bento) */}
+				{!showForm && (
+					<div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8 animate-fade-in-up animation-delay-100">
+						<div className="bento-card p-5 flex items-center gap-4 border-l-4 border-l-blue-500">
+							<div className="p-3 bg-blue-50 text-blue-600 rounded-full">
+								<Target size={24} />
+							</div>
+							<div>
+								<p className="text-slate-500 text-xs font-bold uppercase">
+									Total Goals
+								</p>
+								<p className="text-2xl font-bold text-slate-800">
+									{stats.total}
+								</p>
+							</div>
+						</div>
+
+						<div className="bento-card p-5 flex items-center gap-4 border-l-4 border-l-emerald-500">
+							<div className="p-3 bg-emerald-50 text-emerald-600 rounded-full">
+								<Zap size={24} />
+							</div>
+							<div>
+								<p className="text-slate-500 text-xs font-bold uppercase">
+									Active
+								</p>
+								<p className="text-2xl font-bold text-slate-800">
+									{stats.active}
+								</p>
+							</div>
+						</div>
+
+						<div className="bento-card p-5 flex items-center gap-4 border-l-4 border-l-yellow-500">
+							<div className="p-3 bg-yellow-50 text-yellow-600 rounded-full">
+								<Trophy size={24} />
+							</div>
+							<div>
+								<p className="text-slate-500 text-xs font-bold uppercase">
+									Completed
+								</p>
+								<p className="text-2xl font-bold text-slate-800">
+									{stats.completed}
+								</p>
+							</div>
+						</div>
+
+						<div className="bento-card p-5 flex items-center gap-4 border-l-4 border-l-rose-500">
+							<div className="p-3 bg-rose-50 text-rose-600 rounded-full">
+								<CheckCircle2 size={24} />
+							</div>
+							<div>
+								<p className="text-slate-500 text-xs font-bold uppercase">
+									High Priority
+								</p>
+								<p className="text-2xl font-bold text-slate-800">
+									{stats.highPriority}
+								</p>
+							</div>
+						</div>
+					</div>
+				)}
+
+				{/* Notifications */}
 				{successMessage && (
-					<div className="mb-4 p-4 bg-green-100 border border-green-300 text-green-800 rounded-xl flex items-center gap-2 animate-pulse">
-						<span>✓</span>
-						{successMessage}
+					<div className="mb-6 p-4 bg-emerald-100 text-emerald-800 rounded-xl flex items-center gap-3 animate-fade-in-up">
+						<CheckCircle2 size={20} />
+						<span className="font-medium">{successMessage}</span>
 					</div>
 				)}
 
-				{/* Error Message */}
 				{error && (
-					<div className="mb-4 p-4 bg-red-100 border border-red-300 text-red-800 rounded-xl flex items-center justify-between">
-						<span>{error}</span>
-						<button
-							onClick={() => setError("")}
-							className="text-red-600 hover:text-red-800"
-						>
-							✕
-						</button>
+					<div className="mb-6 p-4 bg-red-100 text-red-800 rounded-xl flex items-center gap-3 animate-fade-in-up">
+						<span className="font-bold">!</span>
+						<span className="font-medium">{error}</span>
 					</div>
 				)}
 
-				{/* Goal Form (Modal-like) */}
-				{showForm && (
-					<div className="mb-6">
+				{/* Form or List */}
+				<div className="animate-fade-in-up animation-delay-200">
+					{showForm ? (
 						<GoalForm
 							onSubmit={editingGoal ? handleUpdateGoal : handleAddGoal}
 							initialData={editingGoal}
-							onCancel={handleCancel}
+							onCancel={() => {
+								setShowForm(false);
+								setEditingGoal(null);
+							}}
 						/>
-					</div>
-				)}
-
-				{/* Goals List */}
-				{!showForm && (
-					<GoalList
-						goals={goals}
-						loading={loading}
-						onUpdateProgress={handleUpdateProgress}
-						onEdit={handleEdit}
-						onDelete={handleDeleteGoal}
-						onStatusChange={handleStatusChange}
-					/>
-				)}
+					) : (
+						<GoalList
+							goals={goals}
+							loading={loading}
+							onUpdateProgress={handleUpdateProgress}
+							onEdit={handleEdit}
+							onDelete={handleDeleteGoal}
+							onStatusChange={handleStatusChange}
+						/>
+					)}
+				</div>
 			</main>
 
 			<Footer />

@@ -6,69 +6,103 @@ import ProgressChart from "../components/charts/ProgressChart";
 import { getGoals, getWorkouts, getMeals } from "../firebase/firebaseServices";
 import { useAuthContext } from "../context/AuthContext";
 import { GOAL_CATEGORIES } from "../utils/constants";
+import {
+	Activity,
+	Flame,
+	Dumbbell,
+	Utensils,
+	Target,
+	TrendingUp,
+	TrendingDown,
+	ArrowRight,
+	ChevronRight,
+	Trophy,
+	Calendar,
+	Zap,
+	User,
+} from "lucide-react";
 
-const StatCard = ({ icon, label, value, subValue, color, trend }) => (
-	<div className="bg-white rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow border border-gray-100">
-		<div className="flex items-center justify-between">
-			<div>
-				<p className="text-sm text-gray-500 mb-1">{label}</p>
-				<p className={`text-2xl font-bold ${color || "text-gray-800"}`}>
-					{value}
-				</p>
-				{subValue && <p className="text-xs text-gray-400 mt-1">{subValue}</p>}
-			</div>
-			<div className="text-3xl">{icon}</div>
-		</div>
-		{trend !== undefined && (
-			<div
-				className={`mt-2 text-sm ${trend >= 0 ? "text-green-600" : "text-red-600"}`}
-			>
-				{trend >= 0 ? "↑" : "↓"} {Math.abs(trend)}% from last week
-			</div>
-		)}
+// --- Components ---
+
+const BentoItem = ({ children, className = "", delay = "" }) => (
+	<div
+		className={`bento-card p-6 relative overflow-hidden group animate-fade-in-up ${delay} ${className}`}
+	>
+		{children}
 	</div>
 );
 
-const GoalPreviewCard = ({ goal }) => {
-	const category =
-		GOAL_CATEGORIES.find((c) => c.id === goal.category) || GOAL_CATEGORIES[8];
-	const progress = Math.min(
-		100,
-		Math.round(
-			((goal.currentValue - (goal.startValue || 0)) /
-				(goal.targetValue - (goal.startValue || 0))) *
-				100,
-		),
-	);
-
-	return (
-		<div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-			<span className="text-2xl">{category.icon}</span>
-			<div className="flex-1 min-w-0">
-				<p className="font-medium text-gray-800 truncate">{goal.title}</p>
-				<div className="flex items-center gap-2 mt-1">
-					<div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
-						<div
-							className={`h-full transition-all ${progress >= 100 ? "bg-green-500" : "bg-blue-500"}`}
-							style={{ width: `${progress}%` }}
-						/>
-					</div>
-					<span className="text-xs font-medium text-gray-500">{progress}%</span>
-				</div>
+const StatCard = ({
+	icon: Icon,
+	label,
+	value,
+	subValue,
+	iconColor,
+	iconBg,
+	trend,
+}) => (
+	<div className="h-full flex flex-col justify-between">
+		<div className="flex justify-between items-start">
+			<div className={`p-3 rounded-2xl ${iconBg} ${iconColor}`}>
+				<Icon size={24} strokeWidth={2.5} />
 			</div>
+			{trend !== undefined && (
+				<div
+					className={`flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full border ${
+						trend >= 0
+							? "bg-emerald-50 text-emerald-700 border-emerald-100"
+							: "bg-rose-50 text-rose-700 border-rose-100"
+					}`}
+				>
+					{trend >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+					<span>{Math.abs(trend)}%</span>
+				</div>
+			)}
 		</div>
-	);
-};
+		<div className="mt-5">
+			<p className="text-3xl font-bold text-slate-800 tracking-tight">
+				{value}
+			</p>
+			<p className="text-sm font-medium text-slate-500">{label}</p>
+			{subValue && <p className="text-xs text-slate-400 mt-1">{subValue}</p>}
+		</div>
+	</div>
+);
 
-const QuickActionButton = ({ icon, label, to, color }) => (
+const QuickAction = ({ icon: Icon, label, to, gradient }) => (
 	<Link
 		to={to}
-		className={`flex flex-col items-center gap-2 p-4 rounded-xl ${color} hover:opacity-90 transition-opacity text-white shadow-md`}
+		className={`group relative overflow-hidden flex items-center gap-4 p-4 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 ${gradient} text-white`}
 	>
-		<span className="text-2xl">{icon}</span>
-		<span className="text-sm font-medium">{label}</span>
+		<div className="absolute inset-0 bg-white/0 group-hover:bg-white/10 transition-colors" />
+		<div className="bg-white/20 p-2.5 rounded-xl backdrop-blur-md border border-white/10">
+			<Icon size={20} strokeWidth={2.5} />
+		</div>
+		<span className="font-semibold text-base tracking-wide">{label}</span>
+		<ArrowRight
+			className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity transform translate-x-[-10px] group-hover:translate-x-0"
+			size={18}
+		/>
 	</Link>
 );
+
+// Helper to map category IDs to Lucide Icons
+const getCategoryIcon = (id) => {
+	switch (id) {
+		case "weight-loss":
+			return Flame;
+		case "muscle-gain":
+			return Dumbbell;
+		case "endurance":
+			return Activity;
+		case "nutrition":
+			return Utensils;
+		case "wellness":
+			return Zap;
+		default:
+			return Target;
+	}
+};
 
 const Dashboard = () => {
 	const { user } = useAuthContext();
@@ -92,7 +126,6 @@ const Dashboard = () => {
 				setWorkouts(workoutsData);
 				setMeals(mealsData);
 
-				// Generate chart data from meals (last 7 days)
 				const last7Days = Array.from({ length: 7 }, (_, i) => {
 					const date = new Date();
 					date.setDate(date.getDate() - (6 - i));
@@ -114,25 +147,23 @@ const Dashboard = () => {
 						calories: totalCalories,
 					};
 				});
-
 				setChartData(caloriesByDay);
 			} catch (err) {
-				console.error("Error fetching dashboard data:", err);
+				console.error("Error fetching data:", err);
 			} finally {
 				setLoading(false);
 			}
 		};
-
 		fetchData();
 	}, [user]);
 
 	const activeGoals = goals.filter((g) => g.status === "active");
 	const completedGoals = goals.filter((g) => g.status === "completed");
 	const totalCaloriesToday = meals
-		.filter((m) => {
-			const mealDate = m.createdAt?.toDate?.();
-			return mealDate?.toDateString() === new Date().toDateString();
-		})
+		.filter(
+			(m) =>
+				m.createdAt?.toDate?.().toDateString() === new Date().toDateString(),
+		)
 		.reduce((sum, m) => sum + (m.calories || 0), 0);
 
 	const workoutsThisWeek = workouts.filter((w) => {
@@ -152,229 +183,287 @@ const Dashboard = () => {
 
 	if (loading) {
 		return (
-			<div className="min-h-screen flex flex-col">
+			<div className="min-h-screen flex flex-col bg-slate-50">
 				<Navbar />
 				<div className="flex-grow flex items-center justify-center">
-					<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500" />
+					<div className="flex flex-col items-center gap-4">
+						<div className="animate-spin text-blue-600">
+							<Activity size={48} />
+						</div>
+						<p className="text-slate-500 font-medium">Syncing data...</p>
+					</div>
 				</div>
-				<Footer />
 			</div>
 		);
 	}
 
 	return (
-		<div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 to-gray-100">
+		<div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900">
 			<Navbar />
 
-			<main className="flex-grow p-4 md:p-6 max-w-7xl mx-auto w-full">
-				{/* Welcome Header */}
-				<div className="mb-8">
-					<h1 className="text-3xl font-bold text-gray-800">
-						{greeting()}, {user?.displayName || "Athlete"}! 👋
-					</h1>
-					<p className="text-gray-500 mt-1">
-						Here's your fitness overview for today
-					</p>
-				</div>
+			<main className="flex-grow p-4 md:p-6 lg:p-8 max-w-7xl mx-auto w-full">
+				{/* Header */}
+				<header className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4 animate-fade-in-up">
+					<div>
+						<h1 className="text-4xl font-extrabold text-slate-900 tracking-tight">
+							{greeting()},{" "}
+							<span className="text-blue-600">
+								{user?.displayName || "Athlete"}
+							</span>
+						</h1>
+						<p className="text-slate-500 mt-2 text-lg">
+							Your fitness journey at a glance.
+						</p>
+					</div>
+					<div className="flex items-center gap-2 text-sm font-medium text-slate-500 bg-white px-4 py-2 rounded-full border border-slate-200 shadow-sm">
+						<Calendar size={16} />
+						{new Date().toLocaleDateString("en-US", {
+							weekday: "long",
+							month: "long",
+							day: "numeric",
+						})}
+					</div>
+				</header>
 
-				{/* Quick Actions */}
-				<div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-					<QuickActionButton
-						icon="🎯"
-						label="New Goal"
-						to="/goals"
-						color="bg-gradient-to-br from-blue-500 to-blue-600"
-					/>
-					<QuickActionButton
-						icon="🏋️"
-						label="Log Workout"
-						to="/workouts"
-						color="bg-gradient-to-br from-green-500 to-green-600"
-					/>
-					<QuickActionButton
-						icon="🥗"
-						label="Log Meal"
-						to="/diet"
-						color="bg-gradient-to-br from-orange-500 to-orange-600"
-					/>
-					<QuickActionButton
-						icon="👤"
-						label="Profile"
-						to="/profile"
-						color="bg-gradient-to-br from-purple-500 to-purple-600"
-					/>
-				</div>
+				{/* BENTO GRID */}
+				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 auto-rows-[minmax(160px,auto)] gap-5">
+					{/* 1. Quick Actions */}
+					<div className="col-span-1 md:col-span-2 lg:col-span-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-fade-in-up animation-delay-100">
+						<QuickAction
+							icon={Target}
+							label="New Goal"
+							to="/goals"
+							gradient="bg-gradient-to-br from-blue-500 to-indigo-600"
+						/>
+						<QuickAction
+							icon={Dumbbell}
+							label="Log Workout"
+							to="/workouts"
+							gradient="bg-gradient-to-br from-emerald-500 to-teal-600"
+						/>
+						<QuickAction
+							icon={Utensils}
+							label="Log Meal"
+							to="/diet"
+							gradient="bg-gradient-to-br from-orange-400 to-rose-500"
+						/>
+						<QuickAction
+							icon={User}
+							label="Profile"
+							to="/profile"
+							gradient="bg-gradient-to-br from-violet-500 to-purple-600"
+						/>
+					</div>
 
-				{/* Stats Grid */}
-				<div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-					<StatCard
-						icon="🎯"
-						label="Active Goals"
-						value={activeGoals.length}
-						subValue={`${completedGoals.length} completed`}
-						color="text-blue-600"
-					/>
-					<StatCard
-						icon="🔥"
-						label="Calories Today"
-						value={totalCaloriesToday}
-						subValue="kcal consumed"
-						color="text-orange-600"
-					/>
-					<StatCard
-						icon="🏋️"
-						label="Workouts This Week"
-						value={workoutsThisWeek}
-						subValue="sessions logged"
-						color="text-green-600"
-					/>
-					<StatCard
-						icon="📊"
-						label="Total Meals"
-						value={meals.length}
-						subValue="meals tracked"
-						color="text-purple-600"
-					/>
-				</div>
-
-				{/* Main Content Grid */}
-				<div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-					{/* Chart Section */}
-					<div className="lg:col-span-2 bg-white rounded-xl p-6 shadow-sm">
-						<div className="flex items-center justify-between mb-4">
-							<h2 className="text-lg font-bold text-gray-800">
-								Calorie Intake (Last 7 Days)
-							</h2>
+					{/* 2. Main Chart */}
+					<BentoItem
+						className="col-span-1 md:col-span-2 lg:col-span-2 lg:row-span-2 flex flex-col"
+						delay="animation-delay-200"
+					>
+						<div className="flex justify-between items-center mb-6">
+							<div className="flex items-center gap-2">
+								<div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
+									<Activity size={20} />
+								</div>
+								<h3 className="text-lg font-bold text-slate-800">
+									Calorie Trend
+								</h3>
+							</div>
 							<Link
 								to="/diet"
-								className="text-blue-600 text-sm hover:underline"
+								className="text-sm font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1 transition-colors"
 							>
-								View all →
+								View Details <ChevronRight size={16} />
 							</Link>
 						</div>
-						{chartData.some((d) => d.calories > 0) ? (
-							<ProgressChart data={chartData} />
-						) : (
-							<div className="h-64 flex items-center justify-center text-gray-400">
-								<div className="text-center">
-									<span className="text-4xl block mb-2">📊</span>
-									<p>No meal data yet. Start logging your meals!</p>
-								</div>
-							</div>
-						)}
-					</div>
-
-					{/* Goals Preview */}
-					<div className="bg-white rounded-xl p-6 shadow-sm">
-						<div className="flex items-center justify-between mb-4">
-							<h2 className="text-lg font-bold text-gray-800">Active Goals</h2>
-							<Link
-								to="/goals"
-								className="text-blue-600 text-sm hover:underline"
-							>
-								View all →
-							</Link>
-						</div>
-
-						{activeGoals.length > 0 ? (
-							<div className="space-y-3">
-								{activeGoals.slice(0, 4).map((goal) => (
-									<GoalPreviewCard key={goal.id} goal={goal} />
-								))}
-								{activeGoals.length > 4 && (
-									<p className="text-center text-sm text-gray-500">
-										+{activeGoals.length - 4} more goals
+						<div className="flex-grow w-full min-h-[220px]">
+							{chartData.some((d) => d.calories > 0) ? (
+								<ProgressChart data={chartData} />
+							) : (
+								<div className="h-full flex flex-col items-center justify-center text-slate-400 border-2 border-dashed border-slate-100 rounded-xl bg-slate-50/50">
+									<Activity size={32} className="mb-2 opacity-50" />
+									<p className="text-sm font-medium">
+										No data recorded this week
 									</p>
-								)}
+								</div>
+							)}
+						</div>
+					</BentoItem>
+
+					{/* 3. Stats Cards */}
+					<BentoItem delay="animation-delay-300">
+						<StatCard
+							icon={Flame}
+							label="Calories Today"
+							value={totalCaloriesToday}
+							subValue="kcal consumed"
+							iconColor="text-orange-600"
+							iconBg="bg-orange-50"
+						/>
+					</BentoItem>
+
+					<BentoItem delay="animation-delay-300">
+						<StatCard
+							icon={Dumbbell}
+							label="Weekly Workouts"
+							value={workoutsThisWeek}
+							subValue="Sessions completed"
+							iconColor="text-emerald-600"
+							iconBg="bg-emerald-50"
+							trend={workoutsThisWeek > 0 ? 12 : 0}
+						/>
+					</BentoItem>
+
+					{/* 4. Active Goals List */}
+					<BentoItem
+						className="col-span-1 md:col-span-1 lg:row-span-2 flex flex-col"
+						delay="animation-delay-200"
+					>
+						<div className="flex justify-between items-center mb-4">
+							<h3 className="text-lg font-bold text-slate-800">Active Goals</h3>
+							<span className="bg-slate-100 text-slate-600 text-xs font-bold px-2.5 py-1 rounded-full">
+								{activeGoals.length}
+							</span>
+						</div>
+
+						<div className="space-y-4 overflow-y-auto pr-1 custom-scrollbar flex-grow">
+							{activeGoals.length > 0 ? (
+								activeGoals.map((goal) => {
+									const Icon = getCategoryIcon(goal.category);
+									const progress = Math.min(
+										100,
+										Math.round(
+											((goal.currentValue - (goal.startValue || 0)) /
+												(goal.targetValue - (goal.startValue || 0))) *
+												100,
+										),
+									);
+
+									return (
+										<div
+											key={goal.id}
+											className="group/item bg-slate-50 hover:bg-slate-100 p-3 rounded-2xl transition-colors border border-transparent hover:border-slate-200"
+										>
+											<div className="flex justify-between items-start mb-3">
+												<div className="flex items-center gap-3">
+													<div className="bg-white p-2 rounded-xl shadow-sm text-blue-600">
+														<Icon size={18} />
+													</div>
+													<div>
+														<p className="font-semibold text-slate-800 text-sm leading-tight">
+															{goal.title}
+														</p>
+														<p className="text-xs text-slate-500 mt-1">
+															{progress}% Completed
+														</p>
+													</div>
+												</div>
+											</div>
+											<div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
+												<div
+													className="h-full bg-blue-600 rounded-full transition-all duration-1000 ease-out"
+													style={{ width: `${progress}%` }}
+												/>
+											</div>
+										</div>
+									);
+								})
+							) : (
+								<div className="flex flex-col items-center justify-center h-full text-center py-8">
+									<div className="bg-slate-100 p-3 rounded-full mb-3 text-slate-400">
+										<Target size={24} />
+									</div>
+									<p className="text-slate-500 text-sm mb-3">
+										No active goals found.
+									</p>
+									<Link
+										to="/goals"
+										className="text-blue-600 text-xs font-bold hover:underline"
+									>
+										Create Goal
+									</Link>
+								</div>
+							)}
+						</div>
+					</BentoItem>
+
+					{/* 5. Completed Goals */}
+					<BentoItem delay="animation-delay-400">
+						<StatCard
+							icon={Trophy}
+							label="Achievements"
+							value={completedGoals.length}
+							subValue="Goals completed"
+							iconColor="text-yellow-600"
+							iconBg="bg-yellow-50"
+						/>
+					</BentoItem>
+
+					{/* 6. Recent Activity List */}
+					<BentoItem
+						className="col-span-1 md:col-span-2 lg:col-span-2"
+						delay="animation-delay-400"
+					>
+						<div className="flex items-center justify-between mb-4">
+							<h3 className="text-lg font-bold text-slate-800">
+								Recent Activity
+							</h3>
+						</div>
+						{workouts.length > 0 ? (
+							<div className="space-y-3">
+								{workouts.slice(0, 2).map((w, i) => (
+									<div
+										key={i}
+										className="flex items-center gap-4 p-3 hover:bg-slate-50 rounded-xl transition-all border border-transparent hover:border-slate-100 group"
+									>
+										<div className="bg-emerald-100 text-emerald-600 p-2.5 rounded-xl">
+											<Dumbbell size={20} />
+										</div>
+										<div className="flex-1 min-w-0">
+											<p className="font-semibold text-slate-800 truncate">
+												{w.name || "Workout Session"}
+											</p>
+											<p className="text-xs text-slate-500">
+												{new Date(w.createdAt?.toDate?.()).toLocaleDateString()}
+											</p>
+										</div>
+										<div className="text-right">
+											<p className="font-bold text-slate-800 text-sm">
+												{w.duration} min
+											</p>
+											<p className="text-xs text-orange-500 font-medium">
+												{w.calories} kcal
+											</p>
+										</div>
+									</div>
+								))}
 							</div>
 						) : (
-							<div className="text-center py-8 text-gray-400">
-								<span className="text-4xl block mb-2">🎯</span>
-								<p className="mb-3">No active goals yet</p>
-								<Link
-									to="/goals"
-									className="inline-block px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600"
-								>
-									Create Your First Goal
-								</Link>
-							</div>
+							<p className="text-slate-400 text-sm italic">
+								No recent activity logged.
+							</p>
 						)}
-					</div>
-				</div>
+					</BentoItem>
 
-				{/* Recent Activity */}
-				<div className="mt-6 bg-white rounded-xl p-6 shadow-sm">
-					<h2 className="text-lg font-bold text-gray-800 mb-4">
-						Recent Activity
-					</h2>
-					<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-						{/* Recent Workouts */}
-						<div>
-							<h3 className="text-sm font-medium text-gray-500 mb-3">
-								Latest Workouts
-							</h3>
-							{workouts.length > 0 ? (
-								<div className="space-y-2">
-									{workouts.slice(0, 3).map((workout) => (
-										<div
-											key={workout.id}
-											className="flex items-center gap-3 p-3 bg-green-50 rounded-lg"
-										>
-											<span className="text-xl">🏋️</span>
-											<div className="flex-1">
-												<p className="font-medium text-gray-800">
-													{workout.name || workout.type}
-												</p>
-												<p className="text-xs text-gray-500">
-													{workout.duration} min • {workout.calories || 0} kcal
-												</p>
-											</div>
-										</div>
-									))}
-								</div>
-							) : (
-								<p className="text-gray-400 text-sm">No workouts logged yet</p>
-							)}
+					{/* 7. Motivation Tile */}
+					<div className="col-span-1 md:col-span-2 lg:col-span-1 relative overflow-hidden rounded-3xl p-6 text-white bg-slate-900 shadow-xl animate-fade-in-up animation-delay-400 flex flex-col justify-center group">
+						<div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity transform group-hover:scale-110 duration-500">
+							<Zap size={120} />
 						</div>
-
-						{/* Recent Meals */}
-						<div>
-							<h3 className="text-sm font-medium text-gray-500 mb-3">
-								Latest Meals
-							</h3>
-							{meals.length > 0 ? (
-								<div className="space-y-2">
-									{meals.slice(0, 3).map((meal) => (
-										<div
-											key={meal.id}
-											className="flex items-center gap-3 p-3 bg-orange-50 rounded-lg"
-										>
-											<span className="text-xl">🥗</span>
-											<div className="flex-1">
-												<p className="font-medium text-gray-800">{meal.name}</p>
-												<p className="text-xs text-gray-500">
-													{meal.type} • {meal.calories} kcal
-												</p>
-											</div>
-										</div>
-									))}
-								</div>
-							) : (
-								<p className="text-gray-400 text-sm">No meals logged yet</p>
-							)}
+						<div className="relative z-10">
+							<p className="text-lg font-medium leading-relaxed italic opacity-90">
+								"The only bad workout is the one that didn't happen."
+							</p>
+							<div className="mt-4 flex items-center gap-2">
+								<div className="h-1 w-8 bg-blue-500 rounded-full"></div>
+								<p className="text-xs text-slate-400 font-bold uppercase tracking-wider">
+									Daily Motivation
+								</p>
+							</div>
 						</div>
 					</div>
-				</div>
-
-				{/* Motivation Quote */}
-				<div className="mt-6 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl p-6 text-white shadow-lg">
-					<p className="text-lg font-medium italic">
-						"The only bad workout is the one that didn't happen."
-					</p>
-					<p className="text-sm opacity-75 mt-2">— Keep pushing forward! 💪</p>
 				</div>
 			</main>
-
 			<Footer />
 		</div>
 	);
